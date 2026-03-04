@@ -573,41 +573,9 @@ function fbOnAuthChanged(callback) {
 <!-- ═══ DATA ENTRY ═══ -->
 <div class="page active" id="page-dump">
   <div class="ph">
-    <div><div class="ph-title">DATA <em>ENTRY</em></div><div class="ph-sub">Paste session data — columns match GPS export order</div></div>
+    <div><div class="ph-title">DATA <em>ENTRY</em></div><div class="ph-sub">Upload GPS export CSV — or enter session data manually</div></div>
   </div>
   <div class="panel">
-    <!-- ── GOOGLE SHEETS CONNECT ── -->
-    <div class="sheets-box">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:.1em;color:#fff;margin-bottom:10px;display:flex;align-items:center;gap:8px">
-        🔗 <span>GOOGLE SHEETS <em style="color:var(--green2);font-style:normal">LIVE CONNECT</em></span>
-      </div>
-      <div class="sheets-row">
-        <div style="flex:1;min-width:260px">
-          <label class="form-label">Published CSV URL</label>
-          <input class="sheets-input" id="sheetsUrl" placeholder="https://docs.google.com/spreadsheets/d/…/pub?output=csv" autocomplete="off">
-        </div>
-        <button class="btn btn-p" id="sheetsConnectBtn" style="white-space:nowrap">Connect & Import</button>
-        <button class="btn btn-g" id="sheetsClearBtn" style="white-space:nowrap">Clear</button>
-      </div>
-      <div class="sheets-status">
-        <div class="ss-dot ss-idle" id="ssDot"></div>
-        <span id="ssMsg" style="color:var(--muted)">No sheet connected — paste a published CSV link above</span>
-      </div>
-      <div class="refresh-row">
-        <span class="refresh-label">Auto-Refresh:</span>
-        <div class="refresh-opt">
-          <button class="ro-btn active" data-mins="0" id="ro0">Off</button>
-          <button class="ro-btn" data-mins="5" id="ro5">5 min</button>
-          <button class="ro-btn" data-mins="15" id="ro15">15 min</button>
-          <button class="ro-btn" data-mins="30" id="ro30">30 min</button>
-        </div>
-        <span class="last-fetched" id="lastFetched"></span>
-      </div>
-      <div style="font-size:10px;color:var(--muted);margin-top:10px;line-height:1.8">
-        <strong style="color:var(--light)">How to get the URL:</strong> In Google Sheets → File → Share → Publish to web → Select your sheet tab → Format: <strong style="color:var(--text)">CSV</strong> → Publish. The URL should end in <code style="background:var(--s3);padding:1px 4px;border-radius:2px">&output=csv</code><br>
-        <strong style="color:var(--light)">If connect fails:</strong> Download the sheet as CSV (File → Download → CSV) and drag it into the upload zone below — same result.
-      </div>
-    </div>
     <!-- ── UPLOAD ZONE ── -->
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
       <span style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)">CSV Sport:</span>
@@ -1827,114 +1795,6 @@ document.getElementById('cmpSwapBtn').addEventListener('click', ()=>{
 // ═══════════════════════════════════════════════
 // GOOGLE SHEETS LIVE CONNECT
 // ═══════════════════════════════════════════════
-let sheetsRefreshTimer=null;
-let sheetsRefreshMins=0;
-
-function setSheetsStatus(state,msg) {
-  const dot=document.getElementById('ssDot'), msgEl=document.getElementById('ssMsg');
-  dot.className='ss-dot';
-  if (state==='ok'){dot.classList.add('ss-ok');msgEl.style.color='var(--green2)';}
-  else if (state==='busy'){dot.classList.add('ss-busy');msgEl.style.color='var(--yellow)';}
-  else if (state==='err'){dot.classList.add('ss-err');msgEl.style.color='#ff6b7a';}
-  else {dot.classList.add('ss-idle');msgEl.style.color='var(--muted)';}
-  msgEl.textContent=msg;
-}
-
-async function fetchAndImportSheets(url) {
-  if (!url||!url.startsWith('http')) { setSheetsStatus('err','Invalid URL — must start with https://'); return; }
-  setSheetsStatus('busy','Connecting…');
-
-  const proxies = [
-    u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-    u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-    u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-  ];
-
-  let text = null;
-  for (let i = 0; i < proxies.length; i++) {
-    const proxyUrl = proxies[i](url);
-    setSheetsStatus('busy', `Trying proxy ${i+1} of ${proxies.length}…`);
-    try {
-      const resp = await fetch(proxyUrl);
-      if (!resp.ok) continue;
-      const t = await resp.text();
-      if (t && t.trim().length > 10) { text = t; break; }
-    } catch(e) { continue; }
-  }
-
-  if (!text) {
-    setSheetsStatus('err','All proxies failed — see instructions below for alternative');
-    toastMsg('Could not reach Google Sheets — try the manual CSV upload instead');
-    return;
-  }
-
-  try {
-    const parsed=parseCSV(text);
-    if (!parsed||!parsed.rows.length) throw new Error('No data rows found — check sheet is published as CSV');
-    const newSessions=processCSVData(parsed);
-    if (!newSessions.length) throw new Error('No sessions detected — check column headers match GPS export format');
-    let added=0;
-    newSessions.forEach(ns=>{
-      const dup=sessions.find(s=>s.date===ns.date&&s.label===ns.label);
-      if (!dup){sessions.push(ns);added++;saveToCloud(ns);}
-    });
-    save();
-    renderSavedList();
-    const now=new Date().toLocaleTimeString('en-IE',{hour:'2-digit',minute:'2-digit'});
-    document.getElementById('lastFetched').textContent=`Last synced: ${now}`;
-    setSheetsStatus('ok',`✓ Connected — ${added} new session${added!==1?'s':''} imported · ${newSessions.length} total in sheet`);
-    if (added>0) toastMsg(`✓ ${added} session${added!==1?'s':''} imported from Sheets`);
-    localStorage.setItem('ck_sheets_url', url);
-    fbSaveMeta('sheets_config', { url, interval: sheetsRefreshMins });
-  } catch(err) {
-    setSheetsStatus('err',`Parse error: ${err.message}`);
-    toastMsg('Import failed — '+err.message);
-  }
-}
-
-function setupSheetsRefresh(mins) {
-  if (sheetsRefreshTimer) { clearInterval(sheetsRefreshTimer); sheetsRefreshTimer=null; }
-  sheetsRefreshMins=mins;
-  document.querySelectorAll('.ro-btn').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.mins)===mins));
-  localStorage.setItem('ck_sheets_interval', mins);
-  if (mins>0) {
-    const url=document.getElementById('sheetsUrl').value.trim();
-    if (url) sheetsRefreshTimer=setInterval(()=>fetchAndImportSheets(url), mins*60000);
-  }
-}
-
-document.getElementById('sheetsConnectBtn').addEventListener('click',()=>{
-  const url=document.getElementById('sheetsUrl').value.trim();
-  fetchAndImportSheets(url);
-  if (sheetsRefreshMins>0) setupSheetsRefresh(sheetsRefreshMins);
-});
-
-document.getElementById('sheetsClearBtn').addEventListener('click',()=>{
-  document.getElementById('sheetsUrl').value='';
-  setupSheetsRefresh(0);
-  setSheetsStatus('idle','No sheet connected — paste a published CSV link above');
-  document.getElementById('lastFetched').textContent='';
-  localStorage.removeItem('ck_sheets_url');
-});
-
-document.querySelectorAll('.ro-btn').forEach(b=>b.addEventListener('click',()=>setupSheetsRefresh(parseInt(b.dataset.mins))));
-
-// Restore saved sheets URL on load
-(()=>{
-  const saved=localStorage.getItem('ck_sheets_url');
-  const savedInterval=parseInt(localStorage.getItem('ck_sheets_interval')||'0');
-  if (saved) {
-    document.getElementById('sheetsUrl').value=saved;
-    setSheetsStatus('idle','Sheet URL restored — click Connect & Import to sync');
-  }
-  if (savedInterval>0) {
-    document.querySelectorAll('.ro-btn').forEach(b=>b.classList.remove('active'));
-    const btn=document.getElementById('ro'+savedInterval);
-    if (btn) btn.classList.add('active');
-    sheetsRefreshMins=savedInterval;
-  }
-})();
-
 // ═══════════════════════════════════════════════
 // PDF IMPORT (using pdf.js)
 // ═══════════════════════════════════════════════

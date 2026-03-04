@@ -269,28 +269,6 @@ body::before{content:'';position:fixed;inset:0;
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
 ::-webkit-scrollbar-thumb:hover{background:var(--muted);}
 
-/* ─── GOOGLE SHEETS CONNECT ─── */
-.sheets-box{background:var(--s2);border:1px solid var(--border2);border-radius:6px;padding:16px 18px;margin-bottom:18px;}
-.sheets-row{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;}
-.sheets-input{flex:1;min-width:260px;background:var(--s3);border:1px solid var(--border2);border-radius:4px;
-  color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;padding:8px 11px;outline:none;transition:border-color .15s;}
-.sheets-input:focus{border-color:var(--red);}
-.sheets-input::placeholder{color:var(--muted);}
-.sheets-status{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:600;letter-spacing:.08em;margin-top:8px;}
-.ss-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
-.ss-idle{background:var(--muted);}   .ss-ok{background:var(--green2);}
-.ss-busy{background:var(--yellow);animation:pulse 1s ease infinite;}
-.ss-err{background:#ff6b7a;}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.refresh-row{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;}
-.refresh-label{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);}
-.refresh-opt{display:flex;gap:4px;}
-.ro-btn{background:transparent;border:1px solid var(--border2);border-radius:3px;color:var(--muted);
-  font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:.08em;
-  padding:3px 9px;cursor:pointer;transition:all .12s;}
-.ro-btn.active,.ro-btn:hover{border-color:var(--red);color:var(--red);}
-.last-fetched{font-size:10px;color:var(--muted);margin-left:auto;}
-
 /* ─── AC VISUAL CHART ─── */
 .ac-chart-row{display:grid;grid-template-columns:150px 1fr 56px 90px;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(42,31,32,.4);}
 .ac-chart-row:last-child{border-bottom:none;}
@@ -1792,9 +1770,6 @@ document.getElementById('cmpSwapBtn').addEventListener('click', ()=>{
   document.getElementById('cmpSelA').value=b; document.getElementById('cmpSelB').value=a;
 });
 
-// ═══════════════════════════════════════════════
-// GOOGLE SHEETS LIVE CONNECT
-// ═══════════════════════════════════════════════
 // ═══════════════════════════════════════════════
 // PDF IMPORT (using pdf.js)
 // ═══════════════════════════════════════════════
